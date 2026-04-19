@@ -10,20 +10,17 @@
         body { background: var(--bg); color: white; font-family: 'Cairo', sans-serif; margin: 0; padding: 0; user-select: none; }
         .app { padding: 20px; text-align: center; padding-bottom: 100px; }
         .balance-val { font-size: 50px; font-weight: 900; color: var(--primary); text-shadow: 0 0 20px rgba(0,255,136,0.3); margin: 10px 0; }
-        
         .mine-card { background: linear-gradient(145deg, #111, #1a1a1a); border-radius: 50%; width: 200px; height: 200px; margin: 30px auto; display: flex; flex-direction: column; justify-content: center; align-items: center; border: 3px solid #222; cursor: pointer; }
         .mine-card.active { border-color: var(--primary); box-shadow: 0 0 20px var(--primary); }
         .mine-icon { font-size: 50px; color: #333; transition: 0.3s; }
         .active .mine-icon { color: var(--primary); animation: rotate 5s linear infinite; }
         @keyframes rotate { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
-
         .task { background: var(--card); border-radius: 15px; padding: 15px; margin-bottom: 10px; display: flex; align-items: center; border: 1px solid #222; }
         .task-info { flex-grow: 1; text-align: right; margin-right: 15px; }
         .task-name { font-size: 14px; font-weight: bold; display: block; }
         .task-reward { font-size: 12px; color: var(--primary); }
         .btn { background: var(--primary); color: black; border: none; padding: 8px 16px; border-radius: 10px; font-weight: bold; cursor: pointer; min-width: 80px; }
-        .btn:disabled { background: #333; color: #666; }
-
+        .btn:disabled { background: #333; color: #666; cursor: not-allowed; }
         .nav { position: fixed; bottom: 0; width: 100%; background: #080808; display: flex; justify-content: space-around; padding: 15px 0; border-top: 1px solid #222; }
         .nav-item { color: #555; font-size: 10px; text-align: center; }
         .nav-item.active { color: var(--primary); }
@@ -47,24 +44,18 @@
     <div class="task">
         <div style="font-size: 24px;"><i class="fas fa-calendar-check" style="color: #f1c40f;"></i></div>
         <div class="task-info"><span class="task-name">تسجيل يومي</span><span class="task-reward">+1.00 PLT</span></div>
-        <button class="btn" onclick="claimDaily(this)">استلام</button>
+        <button class="btn" id="daily-btn" onclick="claimDaily()">استلام</button>
     </div>
 
     <div class="task">
         <div style="font-size: 24px;"><i class="fas fa-play-circle" style="color: var(--primary);"></i></div>
-        <div class="task-info">
-            <span class="task-name">مشاهدة إعلان مكافأة</span>
-            <span class="task-reward">+0.50 PLT</span>
-        </div>
+        <div class="task-info"><span class="task-name">مشاهدة إعلان</span><span class="task-reward">+0.50 PLT</span></div>
         <button class="btn" onclick="showAd(28088)">مشاهدة</button>
     </div>
 
     <div class="task">
         <div style="font-size: 24px;"><i class="fas fa-share-nodes" style="color: #3498db;"></i></div>
-        <div class="task-info">
-            <span class="task-name">دعوة الأصدقاء</span>
-            <span class="task-reward">+5.00 PLT</span>
-        </div>
+        <div class="task-info"><span class="task-name">دعوة الأصدقاء</span><span class="task-reward">+5.00 PLT</span></div>
         <button class="btn" onclick="invite()">دعوة</button>
     </div>
 </div>
@@ -82,7 +73,20 @@
     let bal = parseFloat(localStorage.getItem('plt_bal')) || 0;
     let mineEnd = localStorage.getItem('mine_end');
     const balEl = document.getElementById('balance');
+    const dailyBtn = document.getElementById('daily-btn');
+
+    // تحديث الرصيد عند البدء
     balEl.innerText = bal.toFixed(2);
+
+    // التحقق من حالة زر التسجيل اليومي عند فتح الصفحة
+    function checkDailyStatus() {
+        const lastClaim = localStorage.getItem('last_claim_date');
+        const today = new Date().toDateString();
+        if (lastClaim === today) {
+            dailyBtn.disabled = true;
+            dailyBtn.innerText = "تم ✅";
+        }
+    }
 
     function addPoints(amount) {
         bal += amount;
@@ -90,14 +94,22 @@
         localStorage.setItem('plt_bal', bal);
     }
 
+    function claimDaily() {
+        const today = new Date().toDateString();
+        addPoints(1.0);
+        localStorage.setItem('last_claim_date', today);
+        dailyBtn.disabled = true;
+        dailyBtn.innerText = "تم ✅";
+        tg.showAlert("تم استلام مكافأة اليوم!");
+    }
+
     function showAd(zoneId) {
-        tg.showConfirm(`سيتم عرض إعلان (ID: ${zoneId})، شاهديه للحصول على المكافأة`, (ok) => {
+        tg.showConfirm(`مشاهدة إعلان للحصول على المكافأة؟`, (ok) => {
             if(ok) {
-                // هنا يفتح رابط الإعلان الخاص بك
                 tg.openLink("https://www.google.com"); 
                 setTimeout(() => {
                     addPoints(0.50);
-                    tg.showAlert("تمت إضافة 0.50 PLT لرصيدك بنجاح!");
+                    tg.showAlert("تمت إضافة 0.50 PLT");
                 }, 4000);
             }
         });
@@ -130,7 +142,6 @@
                     const m = Math.floor((remaining % 3600000) / 60000);
                     const s = Math.floor((remaining % 60000) / 1000);
                     timerEl.innerText = `${h}:${m < 10 ? '0'+m : m}:${s < 10 ? '0'+s : s}`;
-                    
                     bal += 0.00002;
                     balEl.innerText = bal.toFixed(2);
                     localStorage.setItem('plt_bal', bal);
@@ -139,18 +150,14 @@
         }
     }
 
-    function claimDaily(btn) {
-        addPoints(1.0);
-        btn.disabled = true; btn.innerText = "تم ✅";
-    }
-
     function invite() {
         const botUser = "PalestinePLT_bot";
-        const text = "انضم معي في بوت فلسطين لتعدين عملة PLT واربح مكافآت يومية!";
+        const text = "انضم معي في بوت فلسطين لتعدين عملة PLT!";
         const url = `https://t.me/share/url?url=https://t.me/${botUser}&text=${encodeURIComponent(text)}`;
         tg.openTelegramLink(url);
     }
 
+    checkDailyStatus();
     if (mineEnd) updateUI();
 </script>
 </body>
